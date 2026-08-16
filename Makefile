@@ -16,6 +16,7 @@ demo:
 	python -m physioforensics.cli features --root data/synthetic --out data/features.csv --roi fixed
 	python -m physioforensics.cli evaluate --table data/features.csv --out data/results.csv
 	python -m physioforensics.cli importance --table data/features.csv --out data/importance.csv
+	python -m physioforensics.cli waveforms --out docs/waveform_comparison.png
 
 clean:
 	rm -rf data models .pytest_cache __pycache__ physioforensics/__pycache__ tests/__pycache__

@@ -83,6 +83,12 @@ swap             60.0     91.6   31.6    1.56     0.185     0.424    56.7
 
 The pipeline recovers an injected heart rate to within **0.2 bpm**. The row worth reading twice is `incoherent`: its SNR (**+13.53 dB**) is marginally *higher* than genuine video's (**+13.13 dB**) — every region carries a clean, strong pulse, they just disagree with each other. Any detector built on signal quality alone waves it through. Phase coherence catches it, **0.416 vs 0.998**. That one row is the entire argument for the project.
 
+Seeing it is more convincing than the table. This is the forehead and neck pulse waveform extracted by the actual pipeline (`physioforensics waveforms`, no numbers hand-picked or touched up):
+
+![Forehead vs. neck pulse waveform for real video and three forgery classes — the real trace stays locked in phase at PLV 1.00, every forgery class drops to 0.12–0.25](docs/waveform_comparison.png)
+
+`real` is two lines tracing one heartbeat. Every forgery is two lines that stop agreeing on where the beat falls — that visual gap *is* the detector.
+
 ### Leave-one-generator-out — the protocol that actually matters
 
 Hold out one forgery method completely, train on the rest, test blind on the unseen one — simulating the real question: *will this still work on a generator that didn't exist when the model was trained?*
@@ -160,7 +166,8 @@ physioforensics/
   synth.py      controlled-physiology synthetic video renderer (5 classes)
   dataset.py    corpus walking, feature tables, family definitions
   train.py      random-split and leave-one-generator-out evaluation protocols
-  cli.py        selftest / synth / features / evaluate / importance / train / analyze
+  plotting.py   forehead-vs-neck pulse waveform comparison plot
+  cli.py        selftest / synth / features / evaluate / importance / train / analyze / waveforms
 tests/          22 tests asserting physical correctness, not just execution
 docs/           committed result tables
 ```

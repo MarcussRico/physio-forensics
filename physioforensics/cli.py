@@ -7,6 +7,7 @@
     physioforensics importance --table feats.csv  rank the physical features
     physioforensics train      --table feats.csv  fit and persist a model
     physioforensics analyze    video.mp4          explain one video
+    physioforensics waveforms  --out plot.png     forehead-vs-neck comparison plot
 """
 
 from __future__ import annotations
@@ -227,6 +228,15 @@ def cmd_analyze(args) -> int:
     return 0
 
 
+def cmd_waveforms(args) -> int:
+    from .plotting import plot_pulse_comparison
+
+    path = plot_pulse_comparison(
+        args.out, duration_sec=args.duration, hr_bpm=args.hr_bpm, seed=args.seed)
+    print(f"Wrote {path}")
+    return 0
+
+
 # --------------------------------------------------------------------------
 
 def build_parser() -> argparse.ArgumentParser:
@@ -291,6 +301,13 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--max-frames", type=int, default=None)
     s.add_argument("--json", default=None, help="also dump features to this path")
     s.set_defaults(func=cmd_analyze)
+
+    s = sub.add_parser("waveforms", help="render a forehead-vs-neck pulse comparison plot")
+    s.add_argument("--out", default="docs/waveform_comparison.png")
+    s.add_argument("--duration", type=float, default=12.0)
+    s.add_argument("--hr-bpm", type=float, default=68.0)
+    s.add_argument("--seed", type=int, default=7)
+    s.set_defaults(func=cmd_waveforms)
 
     return p
 
