@@ -1,18 +1,12 @@
-"""Classical rPPG signal extraction.
+"""Classical rPPG signal extraction: RGB traces -> pulse waveform.
 
-Implements the three standard chrominance-based algorithms for recovering a
-blood-volume-pulse waveform from a sequence of mean RGB values taken over a
-patch of skin:
-
-    GREEN  -- Verkruysse et al. 2008. Baseline. Just the green channel.
-    CHROM  -- de Haan & Jeanne 2013. Projects RGB onto a chrominance plane.
+    GREEN  -- Verkruysse et al. 2008. Raw green channel, baseline.
+    CHROM  -- de Haan & Jeanne 2013. RGB projected onto a chrominance plane.
     POS    -- Wang et al. 2017. Projects onto a plane orthogonal to skin tone,
-              which cancels most motion-induced intensity artefacts.
+              cancelling most motion-induced intensity artefacts.
 
-Everything here is pure numpy/scipy and runs on CPU in milliseconds. There is
-deliberately no neural network in this module: on rPPG benchmarks the classical
-projections remain competitive with (and often beat) learned extractors, and
-they give us interpretable, auditable features.
+Pure numpy/scipy, no learned weights -- classical projections are competitive
+with learned extractors on rPPG benchmarks and stay interpretable.
 """
 
 from __future__ import annotations
@@ -115,9 +109,8 @@ def _chrom_global(rgb: np.ndarray, fps: float) -> np.ndarray:
 def pos(rgb: np.ndarray, fps: float, window_sec: float = 1.6) -> np.ndarray:
     """POS (Wang et al. 2017), plane-orthogonal-to-skin, overlap-added.
 
-    The projection matrix P = [[0, 1, -1], [-2, 1, 1]] maps temporally
-    normalised RGB onto two signals whose combination is orthogonal to the
-    specular (motion/intensity) direction of skin reflectance.
+    proj = [[0, 1, -1], [-2, 1, 1]] -- rows sum to zero, so an intensity
+    change common to all three channels (head motion, glare) cancels out.
     """
     rgb = np.asarray(rgb, dtype=np.float64)
     n = len(rgb)
@@ -186,11 +179,10 @@ def estimate_hr_bpm(x: np.ndarray, fps: float, band=HR_BAND_HZ) -> float:
 
 
 def pulse_snr_db(x: np.ndarray, fps: float, bandwidth_hz: float = 0.2) -> float:
-    """Signal-to-noise ratio in the sense used by the rPPG literature.
+    """rPPG-style SNR: power at f0 and its first harmonic vs the rest of the band.
 
-    Power inside a narrow window around the dominant frequency *and* its first
-    harmonic, divided by all remaining power in the heart-rate band. A genuine
-    cardiac signal concentrates its energy at f0 and 2*f0; noise does not.
+    A real pulse has a sharp systolic peak, so energy shows up at f0 and 2*f0;
+    noise doesn't.
     """
     freqs, power = power_spectrum(x, fps)
     in_band = (freqs >= HR_BAND_HZ[0]) & (freqs <= HR_BAND_HZ[1])
@@ -216,8 +208,7 @@ def pulse_snr_db(x: np.ndarray, fps: float, bandwidth_hz: float = 0.2) -> float:
 def spectral_entropy(x: np.ndarray, fps: float) -> float:
     """Normalised Shannon entropy of the in-band spectrum.
 
-    Low entropy => energy concentrated at one frequency (a heartbeat).
-    High entropy => energy smeared across the band (noise).
+    Low = energy concentrated at one frequency (a heartbeat). High = smeared (noise).
     """
     freqs, power = power_spectrum(x, fps)
     mask = (freqs >= HR_BAND_HZ[0]) & (freqs <= HR_BAND_HZ[1])
@@ -248,8 +239,7 @@ def periodicity(x: np.ndarray, fps: float) -> float:
 def hr_stability(x: np.ndarray, fps: float, window_sec: float = 4.0) -> float:
     """Std-dev (bpm) of the heart rate estimated in sliding windows.
 
-    A real heart rate wanders a little. A spurious peak picked out of noise
-    jumps around wildly.
+    A real heart rate wanders slightly; a spurious peak jumps around.
     """
     win = int(round(window_sec * fps))
     if win < 8 or len(x) < win * 2:
@@ -278,16 +268,11 @@ def narrowband(x: np.ndarray, fps: float, centre_hz: float, half_width: float = 
 def phase_locking_value(a: np.ndarray, b: np.ndarray, fps: float, centre_hz: float) -> float:
     """Phase Locking Value between two pulse signals at the cardiac frequency.
 
-    Both regions are filtered narrowly around the same frequency, the
-    instantaneous phase is taken via the Hilbert transform, and we measure how
-    constant their phase difference stays over time.
+    Narrowband-filter both around centre_hz, take instantaneous phase via the
+    Hilbert transform, measure how constant the phase difference stays.
 
-        PLV = 1  ->  the two patches of skin are driven by one heart
-        PLV = 0  ->  their phase relationship is random
-
-    This is the single most discriminative feature in the pipeline: a
-    generator can paint a plausible-looking face, but making every region of
-    that face share one coherent cardiac phase is a far harder constraint.
+        PLV = 1  ->  one heart drives both patches
+        PLV = 0  ->  phase relationship is random
     """
     if not np.isfinite(centre_hz) or len(a) != len(b) or len(a) < 16:
         return float("nan")

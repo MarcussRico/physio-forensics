@@ -173,14 +173,6 @@ pytest -q     # 22 passed
 
 The suite checks physics, not just that the code runs: every extractor recovers an injected heart rate, forgeries measurably lose phase coherence, a face-swap produces a face-vs-neck mismatch, and — as an executable assertion — **coherence catches cases that per-region signal quality waves through.**
 
-## Limitations
-
-- **Not yet validated on real forgeries** — every number above is synthetic; see the caveat in Results.
-- **rPPG needs signal to work with** — heavy compression, low light, small faces, and strong head motion all degrade the pulse; clips under 5 seconds give poor frequency resolution.
-- **The neck region isn't always available** — tight crops (common in deepfake corpora) remove the single most diagnostic region; the pipeline degrades gracefully to within-face coherence only.
-- **Face-swap is the favourable case** — fully synthesised talking-face video has no real body to disagree with, so face-vs-neck comparison doesn't apply there.
-- **A forensic signal, not a verdict** — belongs in an ensemble alongside appearance-based detectors, not as a sole authority.
-
 ## Roadmap
 
 1. Real-corpus evaluation on FaceForensics++ / Celeb-DF++ (dataset requests pending)

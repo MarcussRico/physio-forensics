@@ -1,26 +1,14 @@
 """Training and evaluation.
 
-Two evaluation protocols, and the difference between them is the point of the
-project.
+Two protocols:
+    random  -- stratified k-fold, every forgery method seen in training (easy case)
+    logo    -- leave-one-generator-out: hold out one method entirely, test blind
 
-    random          stratified k-fold over all videos. Every forgery method
-                    appears in training. This is the number most papers
-                    report and it is the easy case.
+Ablation over feature families (quality / coherence / all) isolates how much
+of the performance comes from cross-region coherence vs per-region quality.
 
-    leave-one-generator-out (LOGO)
-                    hold out one forgery method entirely, train on the rest,
-                    test on the unseen one. This measures whether a detector
-                    generalises to a generator that did not exist when it was
-                    built -- the only question that matters operationally.
-
-On top of that, an ablation over feature families (quality / coherence / all)
-isolates how much of the performance comes from cross-region coherence rather
-than from per-region signal quality.
-
-The classifier is deliberately small: histogram gradient boosting over a few
-dozen interpretable scalars. It handles NaN natively (regions do drop out),
-trains in under a second, and every decision can be traced to a named physical
-quantity.
+Classifier: histogram gradient boosting over a few dozen named scalars.
+Handles NaN natively (regions drop out), trains in under a second.
 """
 
 from __future__ import annotations

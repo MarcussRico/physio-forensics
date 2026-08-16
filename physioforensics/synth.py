@@ -1,38 +1,23 @@
 """Synthetic video generator: ground truth without dataset access.
 
-The public deepfake corpora (FaceForensics++, Celeb-DF, Celeb-DF++) are all
-gated behind approval forms that take days. This module removes that
-dependency from the critical path: it renders videos whose physiology we
-control exactly, so the extraction pipeline can be validated end to end before
-any real data arrives.
+Public deepfake corpora are gated behind approval forms that take days, so
+this renders video with exactly known physiology instead, letting the
+pipeline be validated before any real data arrives.
 
-Each video is a skin-toned field with four region patches whose brightness is
-modulated by a synthetic blood-volume-pulse waveform. What varies between
-classes is *how physically coherent* that modulation is:
+Each video is a skin-toned field with four region patches modulated by a
+synthetic blood-volume-pulse waveform. Classes vary in how coherent that
+modulation is across regions:
 
-    real            one heart rate, one stable phase, small transit delays
-                    between regions -- what a real body must produce
+    real         one heart rate, one stable phase, small transit delays
+    nopulse      no cardiac modulation at all
+    incoherent   every region has its own independent heart rate
+    drifting     correct mean heart rate, phase does a random walk -- the
+                 realistic case where per-region SNR passes but coherence fails
+    swap         face carries a weak drifting pulse, neck carries a real
+                 different one -- the face-swap signature
 
-    nopulse         no cardiac modulation at all -- an early-generation
-                    forgery that ignores physiology entirely
-
-    incoherent      every region invents its own heart rate -- a generator
-                    that synthesises regions semi-independently
-
-    drifting        correct average heart rate, but the phase performs a
-                    random walk -- a generator that has learned the *spectrum*
-                    of a pulse from training data without learning that the
-                    phase must stay locked. This is the hard, realistic case,
-                    and the one where per-region SNR features fail but
-                    cross-region coherence still succeeds.
-
-    swap            face regions carry one (weak, drifting) pulse while the
-                    neck carries a genuine, different one -- the signature of
-                    a face-swap forgery pasted onto a real body
-
-These are physical models of failure modes, not imitations of any specific
-generator. They exist to prove the pipeline measures what it claims to
-measure. Headline numbers must come from real corpora.
+Physical models of failure modes, not imitations of a specific generator.
+Headline numbers must still come from real corpora.
 """
 
 from __future__ import annotations
@@ -73,18 +58,13 @@ def _drifting_phase(n: int, fps: float, rate: float, rng: np.random.Generator) -
 
 
 def _motion_artifact(t: np.ndarray, amplitude: float, rng: np.random.Generator) -> np.ndarray:
-    """In-band specular/motion intensity artifact.
+    """In-band specular/motion intensity artifact, shared across channels.
 
-    Head motion and changing specular reflection alter overall brightness by
-    roughly the same *fraction* in every colour channel. Crucially this lands
-    inside the heart-rate band (subjects nod and shift at ~1-2 Hz), so a
-    bandpass filter cannot remove it.
-
-    This is precisely the nuisance POS and CHROM are built to cancel: their
-    projection coefficients sum to zero, so any perturbation common to all
-    three channels drops out, while the raw green channel absorbs it directly.
-    Without this term the synthetic data is unrealistically clean and the
-    ordering between extractors reported in the literature does not reproduce.
+    Head motion and glare change brightness by roughly the same fraction in
+    every channel, at ~1-2 Hz -- inside the heart-rate band, so a bandpass
+    filter can't remove it. POS/CHROM cancel it (zero-sum projection
+    coefficients); raw green absorbs it. Without this term the synthetic data
+    is too clean and the real extractor ordering doesn't reproduce.
     """
     if amplitude <= 0:
         return np.zeros_like(t)
@@ -113,14 +93,11 @@ def synth_region_signals(
     signals: dict[str, np.ndarray] = {}
 
     if kind == "real":
-        # One heart, one phase, fixed transit delays. Respiratory sinus
-        # arrhythmia (the heart rate rising and falling with the breath) keeps
-        # this from being an unrealistically perfect sinusoid.
-        #
-        # The instantaneous frequency must be *integrated* into phase. Writing
-        # sin(2*pi*f(t)*t) instead would make the frequency deviation grow with
-        # elapsed time rather than oscillate, which biases the recovered rate
-        # more and more as the clip gets longer.
+        # One heart, one phase, fixed transit delays; respiratory sinus
+        # arrhythmia keeps it from being a perfect sinusoid.
+        # Instantaneous frequency must be integrated into phase -- writing
+        # sin(2*pi*f(t)*t) instead grows the frequency deviation with elapsed
+        # time rather than oscillating it, biasing longer clips more.
         inst_freq = f0 * (1.0 + 0.02 * np.sin(2.0 * np.pi * 0.15 * t))
         base_phase = 2.0 * np.pi * np.cumsum(inst_freq) / fps
         for name in REGION_NAMES:
@@ -168,13 +145,11 @@ def synth_region_traces(
     motion: float = 0.0,
     seed: int | None = None,
 ) -> tuple[dict[str, np.ndarray], dict]:
-    """RGB traces straight from the model, bypassing video encoding.
+    """RGB traces straight from the model, bypassing video encoding (fast unit tests).
 
-    Used for fast unit tests of the signal-processing layer in isolation.
-
-    ``motion`` adds an in-band, channel-common intensity artifact. It is
-    applied to every class equally -- it is a property of the capture, not of
-    the forgery, and making it class-dependent would leak the label.
+    ``motion`` adds an in-band, channel-common intensity artifact, applied
+    equally to every class -- it's a capture property, not a forgery property,
+    and making it class-dependent would leak the label.
     """
     rng = np.random.default_rng(seed)
     signals, truth = synth_region_signals(kind, duration_sec, fps, hr_bpm, amplitude, seed)
@@ -217,10 +192,9 @@ def render_video(
 ) -> dict:
     """Render an actual video file exercising the full video -> verdict path.
 
-    Per-pixel noise is essential rather than incidental: the pulse is ~1% of
-    the skin tone, i.e. under two 8-bit levels. Without spatial noise to dither
-    the quantiser, uint8 rounding would erase the signal before it reached the
-    extractor. Real sensors provide this dither for free.
+    Per-pixel noise is required, not incidental: the pulse is ~1% of skin
+    tone (under two 8-bit levels), so without spatial noise to dither the
+    quantiser, uint8 rounding erases it before it reaches the extractor.
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)

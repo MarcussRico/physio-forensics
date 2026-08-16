@@ -1,15 +1,12 @@
 """Build a feature table from a directory of videos.
 
-Expected layout -- the convention used by FaceForensics++, Celeb-DF and the
-synthetic corpus alike:
+Expected layout, matching FaceForensics++ / Celeb-DF / the synthetic corpus:
 
     root/
       real/                  -> label 0
       fake_<generator>/      -> label 1, generator = <generator>
 
-The generator name is carried through to the feature table because the
-headline evaluation is leave-one-generator-out: train on some forgery methods,
-test on a method never seen during training.
+Generator names are kept in the table for leave-one-generator-out evaluation.
 """
 
 from __future__ import annotations
@@ -89,24 +86,15 @@ def build_feature_table(
     return pd.DataFrame(rows)
 
 
-# --------------------------------------------------------------------------
-# feature families -- used for the ablation that isolates the contribution
-# --------------------------------------------------------------------------
-
+# feature families, for the ablation that isolates the coherence contribution
 QUALITY_PREFIXES = ("snr_", "entropy_", "periodicity_", "hr_stability_", "hr_")
 COHERENCE_PREFIXES = ("plv_", "corr_", "hr_spread", "hr_std", "hr_gap", "coherence_")
 
 
 def feature_names(df: pd.DataFrame, family: str = "all") -> list[str]:
-    """Model-input columns for a given feature family.
-
-    quality   -- per-region signal quality only (what prior rPPG detectors use)
-    coherence -- cross-region agreement only (this project's contribution)
-    all       -- both
-    """
+    """Model-input columns for a given feature family: quality, coherence, or all."""
     numeric = df.select_dtypes(include="number").columns
-    # Columns that are NaN for every row carry no information and make the
-    # imputer complain; drop them rather than silently feeding them in.
+    # all-NaN columns carry no information and make the imputer complain
     cols = [c for c in numeric
             if c not in BOOKKEEPING and c not in NON_FEATURE and not df[c].isna().all()]
 

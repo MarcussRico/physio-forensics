@@ -1,21 +1,12 @@
 """Face region tracking and per-region RGB trace extraction.
 
-We deliberately pull traces from several *separate* patches of skin rather than
-one averaged face crop. The whole method rests on comparing regions against
-each other, so keeping them separate is the point.
+Traces come from four *separate* skin patches rather than one averaged face
+crop, since the method compares regions against each other. The neck is the
+odd one out: in a face-swap it usually belongs to the real, unmodified person,
+so face-vs-neck disagreement is direct evidence of a swap.
 
-Regions:
-    forehead, left_cheek, right_cheek   -- inside the synthesised face
-    neck                                -- below the face box
-
-The neck matters. In a face-swap forgery the neck is usually the original,
-unmodified person, so it still carries a genuine pulse while the face does not.
-Face-vs-neck disagreement is therefore direct evidence of a swap.
-
-Two ROI modes:
-    auto  -- OpenCV Haar cascade face detection, boxes derived from face geometry
-    fixed -- boxes at fixed normalised coordinates (used by the synthetic
-             validation harness, and as a fallback for pre-cropped datasets)
+ROI modes: "auto" (Haar cascade, boxes from face geometry) or "fixed"
+(normalised frame coordinates, for the synthetic harness / pre-cropped data).
 """
 
 from __future__ import annotations

@@ -1,22 +1,10 @@
-"""Physiological feature extraction.
+"""Physiological feature extraction: video -> named, interpretable scalars.
 
-Turns a video into a fixed-length, fully interpretable feature vector. There
-are two families:
+Two families:
+  1. per-region quality    -- does this patch of skin carry a cardiac signal?
+  2. cross-region agreement -- do the patches agree they belong to one body?
 
-1. Per-region quality features -- "does this patch of skin carry a cardiac
-   signal at all?"  (SNR, spectral entropy, periodicity, HR stability)
-
-2. Cross-region agreement features -- "do the different patches agree that
-   they belong to the same body?"  (phase locking, correlation, HR spread,
-   face-vs-neck consistency)
-
-Family 2 is the contribution. Family 1 is what prior rPPG detectors mostly
-rely on, and it is exactly what modern generators have started to reproduce
-incidentally by training on real video. Coherence across spatially separated
-regions is a much stiffer physical constraint.
-
-Every feature is a scalar with a physical meaning, so any classifier decision
-can be explained in one sentence to a non-specialist.
+Family 2 is the harder constraint to fake and the project's actual contribution.
 """
 
 from __future__ import annotations

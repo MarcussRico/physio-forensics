@@ -32,9 +32,8 @@ def _log(verbose: bool):
 def cmd_selftest(args) -> int:
     """Confirm the extractor recovers a known heart rate from known physiology.
 
-    This is the project's ground-truth check. It needs no dataset, no network
-    and no approval form, so the signal chain can be trusted before any real
-    corpus arrives.
+    Needs no dataset or network, so the signal chain can be trusted before
+    any real corpus arrives.
     """
     from .features import compute_features
     from .regions import RegionTraces
@@ -73,7 +72,7 @@ def cmd_selftest(args) -> int:
     df = pd.DataFrame(rows)
     print("-" * 78)
 
-    # Check 1: on physiologically valid video the heart rate must be recovered.
+    # heart rate must be recovered on physiologically valid video
     real_err = df[df.kind == "real"].err
     hr_ok = real_err.max() <= args.hr_tolerance
     print(f"[{'PASS' if hr_ok else 'FAIL'}] heart rate recovered on 'real' "
@@ -81,7 +80,7 @@ def cmd_selftest(args) -> int:
     if not hr_ok:
         failures.append("hr_recovery")
 
-    # Check 2: coherence must separate real from every failure mode.
+    # coherence must separate real from every failure mode
     real_plv = df[df.kind == "real"].plv_face.mean()
     for kind in [k for k in df.kind.unique() if k != "real"]:
         other = df[df.kind == kind]
@@ -93,8 +92,7 @@ def cmd_selftest(args) -> int:
         if not ok:
             failures.append(f"separation:{kind}")
 
-    # Check 3: the contribution claim -- coherence must catch cases that
-    # per-region signal quality alone would wave through.
+    # coherence must catch cases per-region signal quality alone waves through
     inc = df[df.kind == "incoherent"]
     real = df[df.kind == "real"]
     snr_fails = inc.snr.mean() >= real.snr.mean()
