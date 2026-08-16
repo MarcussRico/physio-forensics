@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# generated artefacts
+data/
+models/
+*.csv
+!docs/*.csv
+*.joblib
+*.mp4
+*.avi
+.pytest_cache/
+.DS_Store

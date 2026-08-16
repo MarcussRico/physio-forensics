@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "physio-forensics"
+version = "0.1.0"
+description = "Generator-agnostic deepfake detection from cross-region cardiac physiology"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = [
+    "numpy>=1.23",
+    "scipy>=1.9",
+    "pandas>=1.5",
+    "opencv-python>=4.6",
+    "scikit-learn>=1.2",
+    "joblib>=1.2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+physioforensics = "physioforensics.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["physioforensics*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
